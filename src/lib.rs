@@ -20,11 +20,9 @@
 //! Evidence it writes: `peer.mac`, the address exactly as the transport
 //! spelled it.
 
+use context::property::PEER_MAC;
 use identify::{IdentifyError, Presented, StreamArrival, TransportIdentifier};
 use xcore::{Arriving, Mechanism};
-
-/// The arrival property the transport puts the peer's link-layer address on.
-pub const PEER_MAC: &str = "peer.mac";
 
 /// Reads the peer's link-layer address.
 #[derive(Clone, Copy, Debug, Default)]
@@ -53,35 +51,22 @@ impl TransportIdentifier for MacIdentifier {
 
 /// The one spelling: six octets, lowercase hex, colon-separated.
 ///
-/// Accepts colons, hyphens or the Cisco dotted-quad form, and nothing else.
+/// Accepts the spellings `net::mac` reads — colons, hyphens, the Cisco
+/// dotted-quad form or the digits alone — and writes the one it writes.
 ///
 /// # Errors
 ///
 /// Where the text is not six octets of hex.
 pub fn normalize(text: &str) -> Result<String, IdentifyError> {
-    let digits: String = text
-        .trim()
-        .chars()
-        .filter(|character| !matches!(character, ':' | '-' | '.'))
-        .collect();
-
-    if digits.len() != 12
-        || !digits
-            .chars()
-            .all(|character| character.is_ascii_hexdigit())
-    {
-        return Err(IdentifyError::new(format!(
-            "the link-layer address {text:?} is not six octets of hex"
-        )));
-    }
-
-    let octets: Vec<String> = digits
-        .as_bytes()
-        .chunks(2)
-        .map(|pair| String::from_utf8_lossy(pair).to_ascii_lowercase())
-        .collect();
-
-    Ok(octets.join(":"))
+    net::mac::parse(text)
+        .ok()
+        .filter(|octets| octets.len() == 6)
+        .map(|octets| net::mac::notation(&octets))
+        .ok_or_else(|| {
+            IdentifyError::new(format!(
+                "the link-layer address {text:?} is not six octets of hex"
+            ))
+        })
 }
 
 #[cfg(test)]
