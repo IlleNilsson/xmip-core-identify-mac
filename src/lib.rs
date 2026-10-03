@@ -72,12 +72,6 @@ pub fn normalize(text: &str) -> Result<String, IdentifyError> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use stream::Stream;
-    use xcore::StreamId;
-
-    fn stream() -> Stream {
-        Stream::new(StreamId::new(1), b"frame".to_vec(), None)
-    }
 
     fn facts(pairs: &[(&str, &str)]) -> Vec<(String, String)> {
         pairs
@@ -88,9 +82,8 @@ mod tests {
 
     #[test]
     fn the_reported_address_is_presented_in_one_spelling() {
-        let stream = stream();
         let facts = facts(&[("peer.mac", "00-1B-44-11-3A-B7")]);
-        let arrival = StreamArrival::new(&stream, Arriving::Pushed, "enip://plc-7", &facts);
+        let arrival = StreamArrival::new(Arriving::Pushed, "enip://plc-7", &facts);
 
         let claim = MacIdentifier
             .identify(&arrival)
@@ -114,18 +107,16 @@ mod tests {
 
     #[test]
     fn an_arrival_without_a_link_layer_address_presents_nothing() {
-        let stream = stream();
         let facts = facts(&[("peer.address", "192.0.2.10")]);
-        let arrival = StreamArrival::new(&stream, Arriving::Pushed, "https://xmip/in", &facts);
+        let arrival = StreamArrival::new(Arriving::Pushed, "https://xmip/in", &facts);
 
         assert!(MacIdentifier.identify(&arrival).expect("read").is_none());
     }
 
     #[test]
     fn an_address_that_is_not_six_octets_is_an_error() {
-        let stream = stream();
         let facts = facts(&[("peer.mac", "00:1b:44:11:3a")]);
-        let arrival = StreamArrival::new(&stream, Arriving::Pushed, "enip://plc-7", &facts);
+        let arrival = StreamArrival::new(Arriving::Pushed, "enip://plc-7", &facts);
 
         let failure = MacIdentifier.identify(&arrival).expect_err("five octets");
 
@@ -137,9 +128,8 @@ mod tests {
 
     #[test]
     fn a_scheduled_pickup_has_no_peer_to_present() {
-        let stream = stream();
         let facts = facts(&[("peer.mac", "00:1b:44:11:3a:b7")]);
-        let arrival = StreamArrival::new(&stream, Arriving::Scheduled, "modbus://plc-7", &facts);
+        let arrival = StreamArrival::new(Arriving::Scheduled, "modbus://plc-7", &facts);
 
         assert!(MacIdentifier.identify(&arrival).expect("read").is_none());
     }
